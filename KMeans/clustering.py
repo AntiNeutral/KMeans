@@ -18,21 +18,20 @@ class KCluster:
         self.data = pt.from_numpy(data).to(self.devices).float()
 
     def centroids(self, labels: pt.Tensor, cluster_num: int) -> pt.Tensor:
-        # TODO:
         """
         Compute the centroids given the labels
-        :param labels: array of labels
+        :param labels: An array of labels
         :param cluster_num: number of clusters
         :return: centroids as row vectors stacked vertically
         """
         return self._compute_centers(self._recover(labels, cluster_num))
 
-    def _recover(self, groups: np.ndarray | pt.Tensor, count):
+    def _recover(self, groups: np.ndarray | pt.Tensor, count) -> pt.Tensor:
         """
-        convert a 1d label array to 2d 1-of-k encoding label matrix
+        convert a 1d label array to 2d one hot encoding n by k label matrix.
         :param count: number of clusters
         :param groups: arrary / Tensor that records the group labels
-        :return: n by count label matrix of 1 and 0s
+        :return: n by k label matrix of 1 and 0s, where n is the number of data points and k is the number of labels.
         """
         row_number = self.dimension[0]
         zeros = pt.zeros(row_number, count, device=self.devices)
@@ -40,18 +39,26 @@ class KCluster:
         return zeros
 
     def _initial_assignment(self, clusters: int) -> pt.Tensor:
+        """
+        Randomly generate the initial labels.
+        :param clusters: Number of clusters.
+        :return: A 1d array of labels. Indices start with 0 and the maximum index is cluster - 1.
+        """
         initial_assignment = random.randint(0, clusters, self.dimension[0])
         return self._recover(initial_assignment, clusters)
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
+        # TODO:
         pass
 
-    def _assign_centers(self, centers) -> np.ndarray | pt.Tensor:
+    def _assign_centers(self, centers) -> pt.Tensor:
+        # TODO:
         pass
 
-    def single_fit(self, initial_groups: np.ndarray | pt.Tensor):
+    def single_fit(self, initial_groups: pt.Tensor):
+        # TODO:
         """
-        Perform clustering with cosine similarity
+        Perform clustering until convergence or reaching the maximum number of iterations, given one.
         :param initial_groups: label matrix
         :return:
         """
