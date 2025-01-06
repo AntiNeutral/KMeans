@@ -5,15 +5,20 @@ from typing import Any
 
 
 class KCluster:
-    def __init__(self, data: np.ndarray, cluster_num: Any = range(2, 5), eng: str = None) -> None:
+    def __init__(self, data: np.ndarray, cluster_num: Any = range(2, 5), gpu: bool = False) -> None:
+        """
+        :param cluster_num: An iterable of numbers of clusters.
+        :param gpu: Computations are to be done on gpu only if gpu is set to True. It is False by default
+        """
         self.cluster_num = cluster_num
         self.dimension = data.shape
         self.results = None
         self.best = None
-        self.devices = pt.device('cuda') if eng == 'cuda' else pt.device('cpu')
+        self.devices = pt.device('cuda') if gpu else pt.device('cpu')
         self.data = pt.from_numpy(data).to(self.devices).float()
 
     def centroids(self, labels: pt.Tensor, cluster_num: int) -> pt.Tensor:
+        # TODO:
         """
         Compute the centroids given the labels
         :param labels: array of labels
@@ -112,8 +117,8 @@ class KCluster:
 
 
 class KCosine(KCluster):
-    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), eng: str = None) -> None:
-        super().__init__(data, cluster_num, eng)
+    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
+        super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
         """
@@ -147,8 +152,8 @@ class KCosine(KCluster):
 
 
 class KMean(KCluster):
-    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), eng: str = None) -> None:
-        super().__init__(data, cluster_num, eng)
+    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
+        super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
         """
