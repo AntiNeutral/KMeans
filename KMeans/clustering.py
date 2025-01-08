@@ -48,7 +48,11 @@ class KCluster:
         return self._recover(initial_assignment, clusters)
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
-        # TODO:
+        """
+        Compute centroids within each cluster.
+        :param label_matrix: One hot encoding label matrix
+        :return: Centroids as row vectors stacked vertically.
+        """
         pass
 
     def _assign_centers(self, centers) -> pt.Tensor:
@@ -129,9 +133,7 @@ class KCosine(KCluster):
 
     def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
         """
-        compute the cosine between the target and each row of data
-        :param label_matrix: n by t matrix with 1-of-k encoding
-        :return: row vectors of centers
+        Compute the cosine between the target and each row of data
         """
         means = label_matrix.T @ self.data
         return means / pt.norm(means, dim=1, p=2).view(label_matrix.shape[1], -1)
