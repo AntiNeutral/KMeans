@@ -56,7 +56,11 @@ class KCluster:
         pass
 
     def _assign_centers(self, centers) -> pt.Tensor:
-        # TODO:
+        """
+        Assign points to the closetest center.
+        :param centers: Centroids as row vectors stacked vertically.
+        :return: One hot encoding label matrix
+        """
         pass
 
     def single_fit(self, initial_groups: pt.Tensor):
