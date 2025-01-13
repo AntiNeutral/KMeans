@@ -64,11 +64,10 @@ class KCluster:
         pass
 
     def single_fit(self, initial_groups: pt.Tensor):
-        # TODO:
         """
-        Perform clustering until convergence or reaching the maximum number of iterations, given one.
+        Perform clustering once given one initialization.
         :param initial_groups: label matrix
-        :return:
+        :return: Labels as an 1d array and the within group sum of squares.
         """
         centers = self._compute_centers(initial_groups)
         previous_groups = initial_groups
@@ -81,9 +80,14 @@ class KCluster:
         return pt.nonzero(previous_groups, as_tuple=True)[1], self._wss(previous_groups, centers)
 
     def distance_matrix(self) -> np.ndarray | pt.Tensor:
+        """
+        Compute the distance between each pair of points
+        :return: A n by n square matrix. The i, jth entry is the distance between the ith and jth data point.
+        """
         pass
 
     def silhouette(self, groups: np.ndarray | pt.Tensor, count):
+        # TODO
         label_matrix = self._recover(groups, count)
         group_card = pt.sum(label_matrix, dim=0) - label_matrix
         distances = (self.distance_matrix() @ label_matrix) / group_card
