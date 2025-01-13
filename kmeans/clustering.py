@@ -26,7 +26,7 @@ class KCluster:
         """
         return self._compute_centers(self._recover(labels, cluster_num))
 
-    def _recover(self, groups: np.ndarray | pt.Tensor, count) -> pt.Tensor:
+    def _recover(self, groups: np.ndarray | pt.Tensor, count: int) -> pt.Tensor:
         """
         convert a 1d label array to 2d one hot encoding n by k label matrix.
         :param count: number of clusters
@@ -55,7 +55,7 @@ class KCluster:
         """
         pass
 
-    def _assign_centers(self, centers) -> pt.Tensor:
+    def _assign_centers(self, centers: pt.Tensor) -> pt.Tensor:
         """
         Assign points to the closetest center.
         :param centers: Centroids as row vectors stacked vertically.
@@ -63,7 +63,7 @@ class KCluster:
         """
         pass
 
-    def single_fit(self, initial_groups: pt.Tensor):
+    def single_fit(self, initial_groups: pt.Tensor) -> tuple[pt.Tensor, pt.Tensor]:
         """
         Perform clustering once given one initialization.
         :param initial_groups: label matrix
@@ -79,14 +79,14 @@ class KCluster:
             previous_groups = current_groups
         return pt.nonzero(previous_groups, as_tuple=True)[1], self._wss(previous_groups, centers)
 
-    def distance_matrix(self) -> np.ndarray | pt.Tensor:
+    def distance_matrix(self) -> pt.Tensor:
         """
         Compute the distance between each pair of points
         :return: A n by n square matrix. The i, jth entry is the distance between the ith and jth data point.
         """
         pass
 
-    def silhouette(self, groups: np.ndarray | pt.Tensor, count):
+    def silhouette(self, groups: pt.Tensor, count: int) -> pt.Tensor:
         """
         Compute the silhouette score of a clustering outcome, given labels as a 1d array.
         :param groups: 1d array of labels
@@ -101,7 +101,7 @@ class KCluster:
         between_distance = value[:, -1]
         return pt.mean((between_distance - within_distances) / pt.maximum(between_distance, within_distances))
 
-    def _ss_distance_to_center(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _ss_distance_to_center(self, centers: pt.Tensor) -> pt.Tensor:
         """
         Compute distances from points to the centorids they are assigned to
         :param centers: Centroids as row vectors stacked vertically. There is one copy of center for each data point.
@@ -109,7 +109,7 @@ class KCluster:
         """
         pass
 
-    def _wss(self, groups: np.ndarray | pt.Tensor, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _wss(self, groups: pt.Tensor, centers: pt.Tensor) -> pt.Tensor:
         """
         Compute the within group sum of squares.
         :param centers: Centers as row vecters stacked vertically.
@@ -150,25 +150,25 @@ class KCosine(KCluster):
     def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
         super().__init__(data, cluster_num, gpu)
 
-    def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
+    def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
         means = label_matrix.T @ self.data
         return means / pt.norm(means, dim=1, p=2).view(label_matrix.shape[1], -1)
 
-    def _assign_centers(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _assign_centers(self, centers: pt.Tensor) -> pt.Tensor:
         """
         Assign centers to each row. Centroid that maximize the dot product is selected.
         """
         distances = self.data @ centers.T
         return (distances == pt.max(distances, dim=1)[0].view(-1, 1)).float()
 
-    def distance_matrix(self) -> np.ndarray | pt.Tensor:
+    def distance_matrix(self) -> pt.Tensor:
         return pt.sqrt(pt.abs(1 - self.data @ self.data.T))
 
-    def _ss_distance_to_center(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _ss_distance_to_center(self, centers: pt.Tensor) -> pt.Tensor:
         return 1 - pt.matmul(self.data.view(self.dimension[0], 1, -1), centers.view(self.dimension[0], -1, 1)).squeeze()
 
     @staticmethod
-    def predict(centroids: pt.Tensor, data: pt.Tensor):
+    def predict(centroids: pt.Tensor, data: pt.Tensor) -> pt.Tensor:
         """
         Assign labels to a dataset given the centroids.
         :param centroids: Centers as row vectors stacked vertically.
@@ -184,26 +184,26 @@ class KMean(KCluster):
     def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
         super().__init__(data, cluster_num, gpu)
 
-    def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
+    def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
         means = label_matrix.T @ self.data
         return means / pt.sum(label_matrix, dim=0).unsqueeze(1)
 
-    def _assign_centers(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _assign_centers(self, centers: pt.Tensor) -> pt.Tensor:
         diff = self.data.view(self.dimension[0], 1, 1, -1) - centers.reshape(1, centers.shape[0], 1, -1)
         distances = pt.matmul(diff, diff.transpose(2, 3)).squeeze()
         return (distances == pt.min(distances, dim=1)[0].view(-1, 1)).float()
 
-    def _ss_distance_to_center(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+    def _ss_distance_to_center(self, centers: pt.Tensor) -> pt.Tensor:
         diff = self.data - centers
         row_num = self.dimension[0]
         return pt.matmul(diff.view(row_num, 1, -1), diff.view(row_num, -1, 1)).squeeze()
 
-    def distance_matrix(self) -> np.ndarray | pt.Tensor:
+    def distance_matrix(self) -> pt.Tensor:
         diff = self.data.view(self.dimension[0], 1, 1, -1) - self.data.view(1, self.dimension[0], 1, -1)
         return pt.sqrt(pt.matmul(diff, diff.transpose(2, 3)).squeeze())
 
     @staticmethod
-    def predict(centroids: pt.Tensor, data: pt.Tensor):
+    def predict(centroids: pt.Tensor, data: pt.Tensor) -> pt.Tensor:
         diff = data.view(data.shape[0], 1, 1, -1) - centroids.reshape(1, centroids.shape[0], 1, -1)
         distances = pt.matmul(diff, diff.transpose(2, 3)).squeeze()
         label_matrix = (distances == pt.min(distances, dim=1)[0].view(-1, 1)).float()
