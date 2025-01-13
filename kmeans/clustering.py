@@ -19,8 +19,8 @@ class KCluster:
 
     def centroids(self, labels: pt.Tensor, cluster_num: int) -> pt.Tensor:
         """
-        Compute the centroids given the labels
-        :param labels: An array of labels
+        Compute the centroids of data associated to the instance given the labels.
+        :param labels: A 1d array of labels
         :param cluster_num: number of clusters
         :return: centroids as row vectors stacked vertically
         """
@@ -67,7 +67,7 @@ class KCluster:
         """
         Perform clustering once given one initialization.
         :param initial_groups: label matrix
-        :return: Labels as an 1d array and the within group sum of squares.
+        :return: Labels as a 1d array and the within group sum of squares.
         """
         centers = self._compute_centers(initial_groups)
         previous_groups = initial_groups
@@ -87,7 +87,12 @@ class KCluster:
         pass
 
     def silhouette(self, groups: np.ndarray | pt.Tensor, count):
-        # TODO
+        """
+        Compute the silhouette score of a clustering outcome, given labels as a 1d array.
+        :param groups: 1d array of labels
+        :param count: Number of clusters
+        :return: The silhouette score
+        """
         label_matrix = self._recover(groups, count)
         group_card = pt.sum(label_matrix, dim=0) - label_matrix
         distances = (self.distance_matrix() @ label_matrix) / group_card
@@ -97,22 +102,28 @@ class KCluster:
         return pt.mean((between_distance - within_distances) / pt.maximum(between_distance, within_distances))
 
     def _ss_distance_to_center(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
+        """
+        Compute distances from points to the centorids they are assigned to
+        :param centers: Centroids as row vectors stacked vertically. There is one copy of center for each data point.
+        :return: A column vector of distances.
+        """
         pass
 
     def _wss(self, groups: np.ndarray | pt.Tensor, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
         """
-        Compute the within sum of square
-        :param centers: centers as row vecters
-        :param groups: n by t label matrix
-        :return: a scalar, sum of squares
+        Compute the within group sum of squares.
+        :param centers: Centers as row vecters stacked vertically.
+        :param groups: Label matrix
+        :return: Sum of squares as a scalar.
         """
         row_centers = groups @ centers
         return pt.sum(self._ss_distance_to_center(row_centers))
 
     def fit(self, num_init: int = 1) -> None:
         """
-        Perform clustering using algorithm analogue to the tranditional K means clustering
-        :return:
+        Perform clustering using number of clusters provided and initialize multiple times for each number of clusters.
+        Store the results as instance attributes.
+        :param num_init: Num of initializations for each number of clusters.
         """
         first = self.cluster_num[0]
         results = {}
@@ -140,17 +151,12 @@ class KCosine(KCluster):
         super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
-        """
-        Compute the cosine between the target and each row of data
-        """
         means = label_matrix.T @ self.data
         return means / pt.norm(means, dim=1, p=2).view(label_matrix.shape[1], -1)
 
     def _assign_centers(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
         """
-        assign centers to each row
-        :param centers: centers as rows stacked vertically
-        :return: a 1d array indicating group number of each row
+        Assign centers to each row. Centroid that maximize the dot product is selected.
         """
         distances = self.data @ centers.T
         return (distances == pt.max(distances, dim=1)[0].view(-1, 1)).float()
@@ -163,6 +169,12 @@ class KCosine(KCluster):
 
     @staticmethod
     def predict(centroids: pt.Tensor, data: pt.Tensor):
+        """
+        Assign labels to a dataset given the centroids.
+        :param centroids: Centers as row vectors stacked vertically.
+        :param data: Data as a pytorch tensor.
+        :return: A 1d array of labels.
+        """
         distances = data @ centroids.T
         label_matrix = (distances == pt.max(distances, dim=1)[0].view(-1, 1)).float()
         return pt.nonzero(label_matrix, as_tuple=True)[1]
@@ -173,20 +185,10 @@ class KMean(KCluster):
         super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix) -> np.ndarray | pt.Tensor:
-        """
-        compute the cosine between the target and each row of data
-        :param label_matrix: n by t matrix with 1-of-k encoding
-        :return: row vectors of centers
-        """
         means = label_matrix.T @ self.data
         return means / pt.sum(label_matrix, dim=0).unsqueeze(1)
 
     def _assign_centers(self, centers: np.ndarray | pt.Tensor) -> np.ndarray | pt.Tensor:
-        """
-        assign centers to each row
-        :param centers: centers as rows stacked vertically
-        :return: a 1d array indicating group number of each row
-        """
         diff = self.data.view(self.dimension[0], 1, 1, -1) - centers.reshape(1, centers.shape[0], 1, -1)
         distances = pt.matmul(diff, diff.transpose(2, 3)).squeeze()
         return (distances == pt.min(distances, dim=1)[0].view(-1, 1)).float()
