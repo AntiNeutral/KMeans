@@ -5,6 +5,27 @@ from typing import Any
 
 
 class KCluster:
+    """
+    KCluster is designed for clustering data points using k-means with potential GPU acceleration.
+
+    This class provides functionality to initialize, fit, compute centroids, and evaluate clustering
+    via silhouette scores. It supports multiple cluster numbers and identifies the optimal cluster choice
+    if more than three cluster numbers are passed.
+
+    :ivar cluster_num: An iterable representing the number of clusters for the algorithm.
+    :type cluster_num: iterable[int]
+    :ivar dimension: The dimensions of the provided data, derived from the input array.
+    :type dimension: tuple[int, ...]
+    :ivar results: A dictionary storing clustering results including labels, within-group sum of squares,
+        and silhouette scores for each number of clusters.
+    :type results: dict
+    :ivar best: Stores the best clustering results if more than three cluster numbers are provided.
+    :type best: tuple | None
+    :ivar devices: Specifies whether computations are on GPU or CPU based on initialization.
+    :type devices: torch.device
+    :ivar data: Input data converted to a PyTorch tensor and moved to the specified device.
+    :type data: torch.Tensor
+    """
     def __init__(self, data: np.ndarray, cluster_num: Any = range(2, 5), gpu: bool = False) -> None:
         """
         :param cluster_num: An iterable of numbers of clusters.
@@ -12,7 +33,7 @@ class KCluster:
         """
         self.cluster_num = cluster_num
         self.dimension = data.shape
-        self.results = None
+        self.results = {}
         self.best = None
         self.devices = pt.device('cuda') if gpu else pt.device('cpu')
         self.data = pt.from_numpy(data).to(self.devices).float()
@@ -49,9 +70,9 @@ class KCluster:
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
         """
-        Compute centroids within each cluster.
-        :param label_matrix: One hot encoding label matrix
-        :return: Centroids as row vectors stacked vertically.
+        Compute the centroids for each cluster using the provided one-hot encoded label matrix.
+        :param label_matrix: A one-hot encoded label matrix where rows correspond to data points and columns to clusters.
+        :return: A tensor where each row represents the centroid of a cluster, stacked vertically.
         """
         pass
 
@@ -145,12 +166,27 @@ class KCluster:
             turn_point = [key for key, values in diffs.items() if values == max(diffs.values())]
             self.best = (turn_point[0], ) + results[turn_point[0]]
 
+    @staticmethod
+    def predict(centroids: pt.Tensor, data: pt.Tensor) -> pt.Tensor:
+        """
+        Assign labels to a dataset given the centroids.
+        :param centroids: Centers as row vectors stacked vertically.
+        :param data: Data as a pytorch tensor.
+        :return: A 1d array of labels.
+        """
+        pass
+
 
 class KCosine(KCluster):
     def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
         super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
+        """
+        Compute the centroids for each cluster using the label matrix and normalize them to unit vectors.
+        :param label_matrix: A one-hot encoded label matrix where rows correspond to data points and columns to clusters.
+        :return: A tensor of normalized centroids as row vectors stacked vertically.
+        """
         means = label_matrix.T @ self.data
         return means / pt.norm(means, dim=1, p=2).view(label_matrix.shape[1], -1)
 
@@ -162,6 +198,15 @@ class KCosine(KCluster):
         return (distances == pt.max(distances, dim=1)[0].view(-1, 1)).float()
 
     def distance_matrix(self) -> pt.Tensor:
+        """
+        Compute the cosine distance between each pair of data points in the dataset.
+    
+        The cosine distance is calculated as the square root of the absolute difference 
+        between 1 and the cosine similarity, represented by the dot product of normalized vectors.
+    
+        :return: A square matrix of size (n x n), where n is the number of data points. 
+                 The (i, j)-th entry represents the cosine distance between the i-th and j-th data points.
+        """
         return pt.sqrt(pt.abs(1 - self.data @ self.data.T))
 
     def _ss_distance_to_center(self, centers: pt.Tensor) -> pt.Tensor:
