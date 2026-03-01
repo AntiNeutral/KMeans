@@ -178,7 +178,7 @@ class KCluster:
 
 
 class KCosine(KCluster):
-    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
+    def __init__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
         super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
@@ -226,7 +226,7 @@ class KCosine(KCluster):
 
 
 class KMean(KCluster):
-    def __int__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
+    def __init__(self, data: np.ndarray, cluster_num: range = range(2, 5), gpu: bool = False) -> None:
         super().__init__(data, cluster_num, gpu)
 
     def _compute_centers(self, label_matrix: pt.Tensor) -> pt.Tensor:
